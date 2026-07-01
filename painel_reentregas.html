@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reentregas — Impacto no Período</title>
+<style>
+  :root{
+    --canvas:#f4f5f3; --paper:#fbfbf9; --ink:#17211f; --ink-soft:#54615d;
+    --hair:#dcdfd9; --clay:#b0492e; --clay-bg:#f6e7e0; --clay-bd:#e6c8bc;
+    --petrol:#2f5d54; --petrol-bg:#e2ece8; --petrol-bd:#c8ded6; --track:#e7e9e3;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{background:var(--canvas);color:var(--ink);
+    font-family:"Inter","Helvetica Neue",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;line-height:1.45;padding:34px 20px 60px}
+  .wrap{max-width:1140px;margin:0 auto}
+  .serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
+
+  .topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
+  .eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+  h1{font-size:33px;font-weight:600;letter-spacing:-.015em;margin-top:7px;line-height:1.05}
+  .period{color:var(--ink-soft);font-size:13.5px;margin-top:8px}
+  .controls{display:flex;flex-direction:column;align-items:flex-end;gap:9px;padding-top:4px}
+  #refresh{appearance:none;border:1px solid var(--ink);background:var(--ink);color:#fbfbf9;font:inherit;
+    font-size:13px;font-weight:600;padding:9px 16px;border-radius:999px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:8px;transition:transform .12s ease,opacity .12s ease}
+  #refresh:hover{transform:translateY(-1px)}
+  #refresh[disabled]{opacity:.55;cursor:default;transform:none}
+  #refresh .dot{width:7px;height:7px;border-radius:50%;background:#8bd3b0}
+  #refresh.spin .dot{animation:pulse .8s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.25}}
+  .status{font-size:11.5px;color:var(--ink-soft);max-width:270px;text-align:right}
+  .status b{color:var(--ink);font-weight:600}
+  .divider{height:1px;background:var(--ink);margin:22px 0 0;opacity:.9}
+
+  .hero{margin:30px 0 8px}
+  .hero .line{font-size:15px;color:var(--ink-soft);font-weight:500}
+  .hero .big{margin-top:4px;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+  .hero .amount{font-size:52px;font-weight:600;letter-spacing:-.02em;color:var(--clay);line-height:1}
+  .hero .of{font-size:15px;color:var(--ink-soft);max-width:360px}
+  .hero .of b{color:var(--ink)}
+  .meter{margin:24px 0 4px}
+  .meter .track{height:16px;background:var(--petrol-bg);border-radius:8px;overflow:hidden}
+  .meter .fill{height:100%;background:var(--clay);border-radius:8px 0 0 8px;width:0;transition:width 1s cubic-bezier(.2,.7,.2,1)}
+  .meter .ends{display:flex;justify-content:space-between;margin-top:7px;font-size:12px;color:var(--ink-soft)}
+  .meter .ends b{color:var(--ink);font-weight:600}
+
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--hair);
+    border:1px solid var(--hair);border-radius:14px;overflow:hidden;margin:30px 0 0}
+  .kpi{background:var(--paper);padding:18px 18px 16px;display:flex;flex-direction:column;gap:2px}
+  .kpi .lbl{font-size:12px;color:var(--ink-soft);font-weight:600;min-height:30px}
+  .kpi .v{font-size:27px;font-weight:600;letter-spacing:-.02em;margin-top:6px}
+  .kpi .sub{font-size:12px;color:var(--ink-soft);margin-top:3px}
+  .kpi .share{height:5px;background:var(--track);border-radius:4px;margin-top:11px;overflow:hidden}
+  .kpi .share i{display:block;height:100%;border-radius:4px;background:var(--clay);width:0;transition:width .9s ease}
+  .kpi.pos .v{color:var(--petrol)}.kpi.pos .share i{background:var(--petrol)}
+  .tagpct{font-weight:700;color:var(--clay)}
+
+  /* highlight band */
+  .band{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0 0}
+  .hcard{border-radius:14px;padding:18px 20px 16px;position:relative;border:1px solid var(--hair);background:var(--paper)}
+  .hcard.hot{background:var(--clay-bg);border-color:var(--clay-bd)}
+  .hcard.rec{background:var(--petrol-bg);border-color:var(--petrol-bd)}
+  .hcard .htag{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
+  .hcard.hot .htag{color:var(--clay)} .hcard.rec .htag{color:var(--petrol)}
+  .hcard .hbig{font-size:16px;font-weight:600;margin-top:7px;letter-spacing:-.01em}
+  .hcard .hbig b{font-size:23px}
+  .hcard .hsub{font-size:12.5px;color:var(--ink-soft);margin-top:5px;line-height:1.5}
+  .hlist{margin-top:13px;border-top:1px solid rgba(0,0,0,.09);padding-top:9px}
+  .rowc{display:flex;align-items:baseline;gap:10px;font-size:12.5px;padding:3px 0}
+  .rowc .cnt{font-weight:700;min-width:34px;color:var(--ink)}
+  .rowc .cnm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rowc .cvl{color:var(--ink-soft);white-space:nowrap}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:44px;margin-top:36px}
+  .sec-h{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);font-weight:700}
+  .sec-t{font-size:19px;font-weight:600;letter-spacing:-.01em;margin:3px 0 2px}
+  .sec-s{font-size:12.5px;color:var(--ink-soft);margin-bottom:18px}
+  .bar{margin-bottom:15px}
+  .bar .top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px}
+  .bar .nm{font-size:13.5px;font-weight:600}
+  .bar .nm .c{font-weight:500;color:var(--ink-soft);font-size:12px}
+  .bar .amt{font-size:13.5px;font-weight:600;white-space:nowrap}
+  .bar .tk{height:8px;background:var(--track);border-radius:6px;overflow:hidden}
+  .bar .fl{height:100%;border-radius:6px;width:0;transition:width .9s cubic-bezier(.2,.7,.2,1)}
+  .motivo .fl{background:var(--clay)} .transp .fl{background:var(--ink)}
+  .region{margin-top:40px}
+  .region .fl{background:var(--ink)} .region .fl.hot{background:var(--clay)}
+  .region .nm.hot{color:var(--clay)}
+
+  .notes{margin-top:40px;padding-top:18px;border-top:1px solid var(--hair);font-size:12px;color:var(--ink-soft);line-height:1.65}
+  .notes b{color:var(--ink)}.notes p{margin-bottom:6px}
+
+  @media (max-width:860px){
+    body{padding:26px 16px 48px}
+    .kpis{grid-template-columns:repeat(2,1fr)}.cols{grid-template-columns:1fr;gap:34px}
+    .band{grid-template-columns:1fr}h1{font-size:27px}.hero .amount{font-size:42px}
+    .controls{align-items:flex-start;width:100%}.status{text-align:left;max-width:none}}
+  @media (max-width:460px){
+    h1{font-size:23px}.hero .amount{font-size:36px}.hero .of{font-size:14px}
+    .kpis{grid-template-columns:1fr}
+    .meter .ends{flex-direction:column;gap:2px}
+    .hcard .hbig b{font-size:21px}}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+  @media print{body{background:#fff}.controls{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <div class="eyebrow">Logística · Relatório de reentregas</div>
+      <h1 class="serif">Impacto das reentregas no período</h1>
+      <div class="period">Junho/2026 (por emissão) · 5.199 pedidos analisados</div>
+    </div>
+    <div class="controls">
+      <button id="refresh"><span class="dot"></span><span id="btntext">Atualizar</span></button>
+      <div class="status" id="status">Mostrando o retrato mais recente.</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="hero">
+    <div class="line">No período, o valor que passou por reentrega foi de</div>
+    <div class="big">
+      <div class="amount" id="heroAmount">R$ 463.085</div>
+      <div class="of"><b id="heroPct">5,3%</b> do faturamento — concentrado em poucas causas, regiões e transportadores.</div>
+    </div>
+  </div>
+  <div class="meter">
+    <div class="track"><div class="fill" id="heroFill"></div></div>
+    <div class="ends">
+      <span>Faturamento do período · <b id="fatLabel">R$ 8.736.350</b></span>
+      <span>Em atraso · <b id="atrasoLabel">R$ 463.085</b></span>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <!-- HIGHLIGHT BAND -->
+  <div class="band">
+    <div class="hcard hot">
+      <div class="htag">Gargalo · Região</div>
+      <div class="hbig">A <b>Zona Leste</b> concentra o problema</div>
+      <div class="hsub" id="hotSub">76 reentregas (23% do total) e R$ 115 mil — mais que o dobro da 2ª região.</div>
+    </div>
+    <div class="hcard rec">
+      <div class="htag">Reincidência · Clientes</div>
+      <div class="hbig"><b id="recPct">36%</b> das reentregas vêm de clientes reincidentes</div>
+      <div class="hsub" id="recSub">50 clientes com mais de uma reentrega geraram 117 ocorrências.</div>
+      <div class="hlist" id="recList"></div>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="cols">
+    <div class="motivo">
+      <div class="sec-h">Causa raiz</div><div class="sec-t serif">Por que atrasou</div>
+      <div class="sec-s">Valor por motivo · ocorrências</div>
+      <div id="motivoBars"></div>
+    </div>
+    <div class="transp">
+      <div class="sec-h">Concentração · nomes padronizados</div><div class="sec-t serif">Por transportador</div>
+      <div class="sec-s">Top 8 por valor · ocorrências</div>
+      <div id="transpBars"></div>
+    </div>
+  </div>
+
+  <div class="region">
+    <div class="sec-h">Onde acontece</div><div class="sec-t serif">Por região</div>
+    <div class="sec-s">Top 8 por nº de reentregas · valor</div>
+    <div id="regionBars"></div>
+  </div>
+</div>
+
+<script>
+const SHEET_ID = "12dKJrmlJi20IkgYNOyRuE3-saCjxCofdQFUW4V2jGUE";
+
+const SNAPSHOT = {
+  faturamento:8736350.52, pedidosVendidos:5199, ocorrencias:329, pedidosUnicos:295,
+  valorBruto:502402.68, valorUnicos:463084.92, totalItens:79119, itensAtraso:4094,
+  motivos:[
+    ["NÃO DEU TEMPO",182,298903.01],["CLIENTE FECHADO",62,87944.48],["VEICULO QUEBRADO",22,41957.70],
+    ["EXCESSO DE PEDIDOS",34,33845.02],["NÃO CARREGADO",19,26724.73],["CARRO NÃO ENTRA NO LOCAL",3,4773.00],
+    ["MAU TEMPO NA REGIAO",1,2055.58],["SEM CHEQUE",1,1858.00],["NÃO COUBE",1,1169.09],
+    ["FALTA DE PRODUTOS",1,1059.12],["FORMA DE PAGAMENTO ERRADA",1,840.12],["RUA EM OBRAS",1,785.00],["FORA DE ITINERÁRIO",1,487.83]
+  ],
+  transp:[
+    ["Eduardo Araújo Lima",22,58213.31],["Maylon dos Santos",25,57827.40],["George Willian de Souza",31,45992.63],
+    ["Mantovani José",14,35030.13],["Reginaldo Firmino",25,32592.28],["Carlos Henrique",14,27149.95],
+    ["Lopes Alexandre",15,26825.81],["Charleston Alves da Rocha",20,26504.94],
+    ["Abraham Alexandre Rodrigues",27,24033.99],["Erenaldo Amâncio de Souza",20,23995.68]
+  ],
+  regioes:[
+    ["Zona Leste",76,115002.50,true],["Campinas",29,43344.56,false],["Guarujá",23,37522.57,false],
+    ["Mogi",21,35369.73,false],["Santo André",21,33743.60,false],["Santos",16,17207.58,false],
+    ["Aparecida",15,35030.32,false],["São Bernardo",15,10693.07,false]
+  ],
+  reincidentes:[
+    ["SBI Construtora",5,12631.89],["WSA Multi Marcas",4,9232.67],["Daniel do Carmo Lopes",4,2438.24],
+    ["DL da Silva",3,5205.00],["BGI Empreendimentos",3,4824.05],["Messias Comércio",3,3089.97]
+  ],
+  reincSummary:{clientes:50,ocorr:117,pct:36}
+};
+
+/* ---------- padronização de nomes ---------- */
+function clean(s){return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[°º]/g," ").replace(/\s+/g," ").trim().toUpperCase();}
+const NAME_MAP={
+ "FROTA MAYLON DOS SANTOS O":"Maylon dos Santos","3 GEORGE WILLIAN DE SOUZ":"George Willian de Souza",
+ "FROTA EDUARDO ARUJO LIMA":"Eduardo Araújo Lima","FROTA EDUARDO ARAUJO LIMA":"Eduardo Araújo Lima",
+ "FROTA MANTOVANI JOSE":"Mantovani José","FROTA REGINALDO FIRMINO F":"Reginaldo Firmino",
+ "CARLOS HENRIQUE":"Carlos Henrique","FROTA LOPES ALEXANDRE":"Lopes Alexandre",
+ "3 CHARLESTON ALVES DA RO":"Charleston Alves da Rocha","3 ABRAHAM ALEXANDRE RODR":"Abraham Alexandre Rodrigues",
+ "3 ERENALDO AMANCIO DE SO":"Erenaldo Amâncio de Souza","FROTA ISAIAS":"Isaías","3 JEU JULIO":"Jeu Julio",
+ "FROTA GEORGE BARBOSA DA S":"George Barbosa da Silva","FROTA JEFFERSON LUIS TORR":"Jefferson Luis Torres",
+ "3 TULIO AUGUSTO CLARINDO":"Túlio Augusto Clarindo","3 JULIO CESAR BOSSO":"Júlio Cesar Bosso",
+ "FROTA GUILHERME FIRMINO":"Guilherme Firmino","3 LISANDRO VITOR":"Lisandro Vitor",
+ "3 FERNANDO DE JESUS SILV":"Fernando de Jesus Silva","3 FERNANDO DE JESUS":"Fernando de Jesus Silva",
+ "3 JOSE EVANDO DA SILVA A":"José Evando da Silva","3 JOSE EVANDO DA SI":"José Evando da Silva",
+ "FROTA ALESSANDRO":"Alessandro","3 PETROLIO ALEXANDRE":"Petrolio Alexandre",
+ "RETIRA":"Retira (cliente)","RETIRAS":"Retira (cliente)"
+};
+const REGION_MAP={"CAMPIN":"Campinas","GUARUJA":"Guarujá","MOGI":"Mogi","STO AND":"Santo André","SANTOS":"Santos",
+ "APARE":"Aparecida","SBC":"São Bernardo","INDAI":"Indaiatuba","LITORAL":"Litoral","MAUA":"Mauá","CENT S.":"Centro-SP",
+ "S.JCA":"S.J. Campos","SORO":"Sorocaba","BARUE":"Barueri","INTERI":"Interior","Z.SUL":"Zona Sul","GRAJAU":"Grajaú",
+ "SC":"São Caetano","BERTIOGA":"Bertioga","CARAGU":"Caraguá","PR GRAN":"Praia Grande","SAO SEB":"São Sebastião","GUARU":"Guarulhos"};
+function titleCase(s){return String(s||"").toLowerCase().replace(/\b([a-zà-ú])/g,(m,c)=>c.toUpperCase()).replace(/\b(De|Da|Do|Dos|Das|E)\b/g,w=>w.toLowerCase());}
+function normTransp(raw){if(raw==null||raw==="")return "(sem transportador)";return NAME_MAP[clean(raw)]||titleCase(raw);}
+function normRegion(rota){const b=String(rota||"(sem rota)").split("|")[0].trim().toUpperCase();if(b.startsWith("Z.LEST"))return "Zona Leste";return REGION_MAP[b]||titleCase(b);}
+function cliClean(s){let t=String(s||"").replace(/^\s*\d[\d.\/]*\s+/,"").replace(/\s*-?\s*(LTDA|EIRELI|ME|EPP|- ME)\b.*$/i,"").trim();t=titleCase(t);return t.length>26?t.slice(0,25)+"…":t;}
+
+/* ---------- helpers ---------- */
+const brl0=n=>"R$ "+Math.round(n).toLocaleString("pt-BR");
+const brlM=n=>"R$ "+(n/1e6).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})+" mi";
+const pct=(a,b)=>(b?(a/b*100):0).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})+"%";
+const num=n=>Math.round(n).toLocaleString("pt-BR");
+
+/* ---------- render ---------- */
+function render(d){
+  const pctValor=d.valorUnicos/d.faturamento*100;
+  heroAmount.textContent=brl0(d.valorUnicos); heroPct.textContent=pct(d.valorUnicos,d.faturamento);
+  fatLabel.textContent=brl0(d.faturamento); atrasoLabel.textContent=brl0(d.valorUnicos);
+  heroFill.style.width=Math.max(pctValor,2).toFixed(2)+"%";
+
+  const kpis=[
+    {cls:"pos",lbl:"Faturamento do período",v:brlM(d.faturamento),sub:num(d.pedidosVendidos)+" pedidos",share:100},
+    {cls:"",lbl:'Pedidos em atraso <span class="tagpct">'+pct(d.pedidosUnicos,d.pedidosVendidos)+'</span>',v:num(d.pedidosUnicos),sub:"de "+num(d.pedidosVendidos)+" pedidos",share:d.pedidosUnicos/d.pedidosVendidos*100},
+    {cls:"",lbl:'Itens em atraso <span class="tagpct">'+pct(d.itensAtraso,d.totalItens)+'</span>',v:num(d.itensAtraso),sub:"de "+num(d.totalItens)+" itens",share:d.itensAtraso/d.totalItens*100},
+    {cls:"",lbl:"Ocorrências de reentrega",v:num(d.ocorrencias),sub:(d.ocorrencias-d.pedidosUnicos)+" pedidos com +1 tentativa",share:100,dim:true}
+  ];
+  document.getElementById("kpis").innerHTML=kpis.map(k=>`
+    <div class="kpi ${k.cls}"><div class="lbl">${k.lbl}</div><div class="v">${k.v}</div>
+    <div class="sub">${k.sub}</div>
+    <div class="share"><i style="width:${Math.max(k.share,k.dim?0:2).toFixed(1)}%;${k.dim?'background:var(--hair)':''}"></i></div></div>`).join("");
+
+  // highlight: região hotspot
+  const rg=[...d.regioes].sort((a,b)=>b[1]-a[1]);
+  const zl=rg.find(r=>r[0]==="Zona Leste")||rg[0];
+  const second=rg.filter(r=>r[0]!==zl[0])[0];
+  document.getElementById("hotSub").innerHTML=`<b style="color:var(--clay)">${zl[1]} reentregas</b> (${pct(zl[1],d.ocorrencias)} do total) e ${brl0(zl[2])}` + (second?` — mais que o dobro de ${second[0]} (${second[1]}).`:".");
+
+  // highlight: reincidentes
+  const rs=d.reincSummary;
+  document.getElementById("recPct").textContent=rs.pct+"%";
+  document.getElementById("recSub").innerHTML=`<b>${rs.clientes} clientes</b> com mais de uma reentrega geraram <b>${rs.ocorr} ocorrências</b>. Ganho rápido com agendamento/confirmação prévia.`;
+  document.getElementById("recList").innerHTML=d.reincidentes.slice(0,6).map(c=>`
+    <div class="rowc"><span class="cnt">${c[1]}×</span><span class="cnm">${c[0]}</span><span class="cvl">${brl0(c[2])}</span></div>`).join("");
+
+  // motivos
+  const mv=[...d.motivos].sort((a,b)=>b[2]-a[2]); const topM=mv.slice(0,6); const rest=mv.slice(6);
+  if(rest.length)topM.push(["OUTROS ("+rest.length+" motivos)",rest.reduce((s,x)=>s+x[1],0),rest.reduce((s,x)=>s+x[2],0)]);
+  const maxM=Math.max(...topM.map(x=>x[2]));
+  document.getElementById("motivoBars").innerHTML=topM.map(m=>`
+    <div class="bar motivo"><div class="top"><div class="nm">${titleCase(m[0])} <span class="c">· ${m[1]} ocorr.</span></div><div class="amt">${brl0(m[2])}</div></div>
+    <div class="tk"><div class="fl" style="width:${(m[2]/maxM*100).toFixed(1)}%"></div></div></div>`).join("");
+
+  // transportadores (já normalizados)
+  const tv=[...d.transp].sort((a,b)=>b[2]-a[2]).slice(0,8); const maxT=Math.max(...tv.map(x=>x[2]));
+  document.getElementById("transpBars").innerHTML=tv.map(t=>`
+    <div class="bar transp"><div class="top"><div class="nm">${t[0]} <span class="c">· ${t[1]}</span></div><div class="amt">${brl0(t[2])}</div></div>
+    <div class="tk"><div class="fl" style="width:${(t[2]/maxT*100).toFixed(1)}%"></div></div></div>`).join("");
+
+  // região
+  const rv=[...d.regioes].sort((a,b)=>b[1]-a[1]).slice(0,8); const maxR=Math.max(...rv.map(x=>x[1]));
+  document.getElementById("regionBars").innerHTML=rv.map(r=>{const hot=r[0]==="Zona Leste";return `
+    <div class="bar region"><div class="top"><div class="nm ${hot?'hot':''}">${r[0]} <span class="c">· ${r[1]} reentregas</span></div><div class="amt">${brl0(r[2])}</div></div>
+    <div class="tk"><div class="fl ${hot?'hot':''}" style="width:${(r[1]/maxR*100).toFixed(1)}%"></div></div></div>`;}).join("");
+
+}
+
+/* ---------- fetch ao vivo ---------- */
+function digits(s){return s==null?"":String(s).replace(/\D/g,"");}
+function toNum(v){if(typeof v==="number")return v;if(v==null)return 0;return parseFloat(String(v).replace(/\./g,"").replace(",","."))||0;}
+async function gviz(sheet){
+  const r=await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${sheet}`,{credentials:"omit"});
+  const t=await r.text(); const j=JSON.parse(t.substring(t.indexOf("{"),t.lastIndexOf("}")+1));
+  return j.table.rows.map(row=>(row.c||[]).map(c=>c?c.v:null));
+}
+function compute(reRows,veRows){
+  const seenVal={},motMap={},transMap={},regMap={},cliMap={}; let ocorr=0,bruto=0; const atras=new Set();
+  for(const r of reRows){
+    const ped=digits(r[8]); if(!ped)continue;
+    const val=toNum(r[7]); ocorr++; bruto+=val; atras.add(ped);
+    if(!(ped in seenVal))seenVal[ped]=val;
+    const mo=(r[10]||"(vazio)"); motMap[mo]=motMap[mo]||[0,0]; motMap[mo][0]++; motMap[mo][1]+=val;
+    const tr=normTransp(r[12]); transMap[tr]=transMap[tr]||[0,0]; transMap[tr][0]++; transMap[tr][1]+=val;
+    const rg=normRegion(r[2]); regMap[rg]=regMap[rg]||[0,0]; regMap[rg][0]++; regMap[rg][1]+=val;
+    const cl=cliClean(r[5]); cliMap[cl]=cliMap[cl]||[0,0]; cliMap[cl][0]++; cliMap[cl][1]+=val;
+  }
+  const valorUnicos=Object.values(seenVal).reduce((s,v)=>s+v,0);
+  let faturamento=0,totalItens=0,pedidosVendidos=0; const vItens={};
+  for(const r of veRows){const ped=digits(r[3]); if(ped){pedidosVendidos++; faturamento+=toNum(r[9]); const it=parseInt(digits(r[14]))||0; totalItens+=it; if(!(ped in vItens))vItens[ped]=it;}}
+  let itensAtraso=0; atras.forEach(p=>{if(p in vItens)itensAtraso+=vItens[p];});
+  const recArr=Object.entries(cliMap).filter(([k,v])=>v[0]>1).sort((a,b)=>b[1][0]-a[1][0]||b[1][1]-a[1][1]);
+  const recOcc=recArr.reduce((s,[k,v])=>s+v[0],0);
+  return {
+    faturamento,pedidosVendidos,ocorrencias:ocorr,pedidosUnicos:atras.size,valorBruto:bruto,valorUnicos,totalItens,itensAtraso,
+    motivos:Object.entries(motMap).map(([k,v])=>[k,v[0],v[1]]),
+    transp:Object.entries(transMap).map(([k,v])=>[k,v[0],v[1]]),
+    regioes:Object.entries(regMap).map(([k,v])=>[k,v[0],v[1],k==="Zona Leste"]),
+    reincidentes:recArr.slice(0,6).map(([k,v])=>[k,v[0],v[1]]),
+    reincSummary:{clientes:recArr.length,ocorr:recOcc,pct:Math.round(recOcc/ocorr*100)}
+  };
+}
+async function atualizar(){
+  const btn=document.getElementById("refresh"),st=document.getElementById("status"),bt=document.getElementById("btntext");
+  btn.classList.add("spin"); btn.disabled=true; bt.textContent="Atualizando…";
+  try{
+    const [re,ve]=await Promise.all([gviz("reentregas"),gviz("vendas")]);
+    const d=compute(re,ve); if(!d.ocorrencias||!d.faturamento)throw new Error("vazio");
+    render(d);
+    const now=new Date().toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+    st.innerHTML=`<b>Ao vivo.</b> Atualizado em ${now}.`;
+  }catch(e){
+    st.innerHTML=`Não consegui acessar ao vivo — mostrando o retrato. Deixe a planilha como <b>“qualquer pessoa com o link pode ver”</b> e tente de novo.`;
+  }finally{btn.classList.remove("spin"); btn.disabled=false; bt.textContent="Atualizar";}
+}
+
+render(SNAPSHOT);
+document.getElementById("refresh").addEventListener("click",atualizar);
+</script>
+</body>
+</html>
